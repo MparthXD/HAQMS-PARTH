@@ -15,6 +15,27 @@ export const AuthProvider = ({ children }) => {
   // Read backend base URL from environment variables for production-readiness, fallback to localhost for dev
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
 
+  // Helper to handle parsing JSON and provide clean error messages for invalid responses
+  const safeParseJson = async (response) => {
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        return await response.json();
+      } catch (err) {
+        throw new Error('Failed to parse JSON response from server.');
+      }
+    }
+    
+    // Non-JSON response (usually HTML 404 or Gateway Error)
+    const text = await response.text();
+    console.error('Non-JSON response received:', text);
+    throw new Error(
+      'Server returned an invalid HTML/text response instead of JSON. This usually indicates that:\n' +
+      '1. Your NEXT_PUBLIC_API_BASE_URL environment variable is missing the "/api" suffix (e.g. it must end with "/api").\n' +
+      '2. Your backend API service is down or failing to boot on Railway. Please check your Railway logs.'
+    );
+  };
+
   useEffect(() => {
     // Check for stored token and user on initialization
     const storedToken = localStorage.getItem('haqms_token');
@@ -44,7 +65,7 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const data = await safeParseJson(response);
 
       if (!response.ok) {
         throw new Error(data.error || 'Authentication failed');
@@ -84,7 +105,7 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ name, email, password, role }),
       });
 
-      const data = await response.json();
+      const data = await safeParseJson(response);
 
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed');
