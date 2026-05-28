@@ -516,9 +516,15 @@ export default function Dashboard() {
                                 {p.age} yrs / <span className="capitalize">{p.gender}</span>
                               </td>
                               <td className="py-3.5 text-right space-x-2">
+                                <Link
+                                  href={`/patients/${p.id}/history-records`}
+                                  className="text-xxs px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold hover:bg-teal-500 hover:text-white transition-colors inline-flex items-center"
+                                >
+                                  View Dossier
+                                </Link>
                                 <button
                                   onClick={() => handleQueueCheckin(p.id, doctorsList[0]?.id)}
-                                  className="text-xxs px-2.5 py-1 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400 font-bold hover:bg-teal-500 hover:text-white transition-colors"
+                                  className="text-xxs px-2.5 py-1 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400 font-extrabold hover:bg-teal-500 hover:text-white transition-colors"
                                 >
                                   Check In
                                 </button>
