@@ -1,15 +1,11 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../prismaClient');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET /api/appointments
 // List all appointments
-// PERFORMANCE BUG: Classic N+1 Query Issue!
-// Instead of using Prisma's include, it loops through each appointment and executes
-// individual select statements for Patient and Doctor details.
 router.get('/', authenticate, async (req, res) => {
   try {
     const { doctorId, status } = req.query;
@@ -18,40 +14,24 @@ router.get('/', authenticate, async (req, res) => {
     if (doctorId) where.doctorId = doctorId;
     if (status) where.status = status;
 
-    // Fetch core appointments
+    // FIX: Single query with Prisma include replaces the previous N+1 loop
     const appointments = await prisma.appointment.findMany({
       where,
       orderBy: { appointmentDate: 'asc' },
+      include: {
+        patient: {
+          select: { id: true, name: true, phoneNumber: true, age: true, medicalHistory: true },
+        },
+        doctor: {
+          select: { id: true, name: true, specialization: true },
+        },
+      },
     });
 
-    const detailedAppointments = [];
-
-    // N+1 triggers here: For every single appointment, we perform two extra queries!
-    for (const app of appointments) {
-      console.log(`[N+1 DB QUERY] Fetching Patient (${app.patientId}) and Doctor (${app.doctorId}) for Appointment ${app.id}`);
-      
-      const patient = await prisma.patient.findUnique({
-        where: { id: app.patientId },
-      });
-
-      const doctor = await prisma.doctor.findUnique({
-        where: { id: app.doctorId },
-      });
-
-      detailedAppointments.push({
-        ...app,
-        patient: patient ? { id: patient.id, name: patient.name, phoneNumber: patient.phoneNumber, age: patient.age, medicalHistory: patient.medicalHistory } : null,
-        doctor: doctor ? { id: doctor.id, name: doctor.name, specialization: doctor.specialization } : null,
-      });
-    }
-
-    res.json({
-      success: true,
-      count: detailedAppointments.length,
-      appointments: detailedAppointments,
-    });
+    res.json({ success: true, count: appointments.length, appointments });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to retrieve appointments', details: error.message });
+    console.error('[appointments] GET / error:', error);
+    res.status(500).json({ error: 'An internal error occurred.' });
   }
 });
 

@@ -11,9 +11,14 @@ export default function QueueMonitor() {
   
   // Duplicated config state just to add minor code smell
   const [refreshCount, setRefreshCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
-  // HARDCODED API BASE URL: Duplicated from AuthContext (code duplication smell)
-  const API_BASE_URL = 'http://localhost:5000/api';
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Read backend base URL from environment variables for production-readiness, fallback to localhost for dev
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
 
   const fetchQueueData = async () => {
     try {
@@ -35,24 +40,13 @@ export default function QueueMonitor() {
   };
 
   useEffect(() => {
-    // Initial fetch
     fetchQueueData();
 
-    // MEMORY LEAK BUG:
-    // This setInterval has NO cleanup function (does not return clearInterval).
-    // Every time this page is mounted, a new background polling timer is spun up.
-    // If the candidate navigates between Dashboard and Queue multiple times,
-    // dozens of parallel intervals will poll the database, causing memory bloat,
-    // state update crashes on unmounted components, and heavy server load.
-    const intervalId = setInterval(() => {
-      console.log(`[POLL] Active Queue Poll #${refreshCount + 1} firing...`);
-      fetchQueueData();
-      setRefreshCount((prev) => prev + 1);
-    }, 3000);
+    const intervalId = setInterval(fetchQueueData, 3000);
 
-    // Junior Developer Note: "Interval created, will run forever to keep dashboard fully synced!"
-    // Missing: return () => clearInterval(intervalId);
-  }, []); // Note that refreshCount dependency is missing too, causing stale closure on log!
+    // FIX: Always return cleanup to cancel the interval on unmount
+    return () => clearInterval(intervalId);
+  }, []);
 
   // Group tokens by doctor
   const groupedTokens = tokens.reduce((groups, token) => {
@@ -74,8 +68,16 @@ export default function QueueMonitor() {
     return groups;
   }, {});
 
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex flex-col gradient-bg items-center justify-center p-6">
+        <p className="text-sm font-semibold text-slate-400">Loading monitor board...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" suppressHydrationWarning>
       <Navbar />
       
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 sm:p-8">

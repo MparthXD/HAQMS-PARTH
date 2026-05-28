@@ -1,0 +1,46 @@
+# Render Infrastructure-as-Code Blueprint
+# Deploy the entire HAQMS stack with 1-click on Render.com
+
+services:
+  # 1. Express Backend Web Service
+  - type: web
+    name: haqms-backend
+    runtime: node
+    plan: free # Can be upgraded to starter/standard in production
+    buildCommand: npm install --prefix backend && npm run prisma:generate --prefix backend
+    startCommand: npm run start --prefix backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000 # Render assigns ports dynamically, but this is a standard override
+      - key: JWT_SECRET
+        generateValue: true # Generates a secure, cryptographically random key automatically
+      - key: DATABASE_URL
+        fromDatabase:
+          name: haqms-db
+          property: connectionString
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:3000 # Render will automatically append your frontend URL when deployed
+
+  # 2. Next.js Frontend Web Service
+  - type: web
+    name: haqms-frontend
+    runtime: node
+    plan: free
+    buildCommand: npm install --prefix frontend && npm run build --prefix frontend
+    startCommand: npm run start --prefix frontend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_BASE_URL
+        fromService:
+          name: haqms-backend
+          property: url
+        value: /api # Render supports path matching if backend is mapped behind same domain
+
+databases:
+  # 3. Managed PostgreSQL Database
+  - name: haqms-db
+    plan: free
+    postgresMajorVersion: 15

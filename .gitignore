@@ -1,0 +1,55 @@
+# ==========================================
+# HAQMS PRODUCTION-GRADE GITIGNORE
+# ==========================================
+
+# --- Dependencies & Packages ---
+node_modules/
+/node_modules
+/*/node_modules
+package-lock.json.log
+
+# --- Local Environment Variables & Credentials (CRITICAL) ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.prod
+*.pem
+*.key
+
+# --- Next.js Frontend Build & Cache Outputs ---
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.turbo/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# --- Backend & Database Cache Outputs ---
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# --- Docker & Logs ---
+*.log
+logs/
+.docker/
+
+# --- IDEs, Text Editors, & System Files ---
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw*
+.DS_Store
+Thumbs.db

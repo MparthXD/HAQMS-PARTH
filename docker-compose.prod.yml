@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # 1. Database Service
+  postgres-prod:
+    image: postgres:15-alpine
+    container_name: haqms-postgres-prod
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: production_secure_db_password_9872
+      POSTGRES_DB: haqms_prod
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - haqms-prod-net
+
+  # 2. Express Backend API Service
+  backend-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: haqms-backend-prod
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://postgres:production_secure_db_password_9872@postgres-prod:5432/haqms_prod?schema=public
+      JWT_SECRET: production_secure_jwt_token_secret_key_rotation_991823
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:80,http://127.0.0.1
+    ports:
+      - '5000:5000'
+    depends_on:
+      - postgres-prod
+    restart: always
+    networks:
+      - haqms-prod-net
+
+  # 3. Next.js Frontend Client Service
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Build-time API Base URL accessed by client browsers
+        - NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api
+    container_name: haqms-frontend-prod
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend-prod
+    restart: always
+    networks:
+      - haqms-prod-net
+
+volumes:
+  pgdata-prod:
+
+networks:
+  haqms-prod-net:
+    driver: bridge
